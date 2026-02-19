@@ -161,12 +161,33 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 ./uninstall.sh
 ```
 
-확인 없이 즉시 제거:
+### uninstall.sh 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--yes` / `-y` | 확인 프롬프트 없이 즉시 실행 |
+| `--state-dir PATH` | 삭제할 상태 디렉터리 지정 (기본값: `~/.openclaw`) |
+| `--skip-firewall` | UFW 규칙 제거 건너뜀 |
+| `--lang ko\|en` | 출력 언어 설정 (기본값: 시스템 LANG 자동 감지) |
+
+### 사용 예시
+
 ```bash
+# 확인 없이 즉시 제거
 ./uninstall.sh --yes
+
+# 상태 디렉터리 경로 직접 지정
+./uninstall.sh --state-dir /custom/path --yes
+
+# 방화벽 규칙 제거 건너뜀
+./uninstall.sh --skip-firewall --yes
+
+# 영어로 출력
+./uninstall.sh --lang en
 ```
 
-제거 범위:
+### 제거 범위
+
 - openclaw 게이트웨이 및 데몬 중지
 - npm 패키지 제거
 - `~/.openclaw`, `~/.openclaw-*` 디렉터리 삭제
