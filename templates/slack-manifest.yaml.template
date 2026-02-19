@@ -1,0 +1,54 @@
+# Slack App Manifest (참고용)
+# 이 파일은 자동 생성됩니다. Slack App 설정 확인 시 참고하세요.
+# https://api.slack.com/reference/manifests
+
+display_information:
+  name: ${OPENCLAW_BOT_NAME}
+  description: "OpenClaw AI Assistant — powered by Claude"
+  background_color: "#1a1a2e"
+
+features:
+  bot_user:
+    display_name: ${OPENCLAW_BOT_NAME}
+    always_online: true
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - channels:history
+      - channels:read
+      - chat:write
+      - chat:write.customize
+      - files:read
+      - files:write
+      - groups:history
+      - groups:read
+      - im:history
+      - im:read
+      - im:write
+      - mpim:history
+      - mpim:read
+      - mpim:write
+      - reactions:read
+      - reactions:write
+      - users:read
+      - users:read.email
+
+settings:
+  event_subscriptions:
+    bot_events:
+      - app_mention
+      - message.channels
+      - message.groups
+      - message.im
+      - message.mpim
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false

@@ -1,0 +1,35 @@
+{
+  "gateway": {
+    "port": 18789,
+    "bind": "127.0.0.1",
+    "token": "${OPENCLAW_GATEWAY_TOKEN}"
+  },
+  "models": {
+    "chat":  "${OPENCLAW_MODEL_CHAT}",
+    "quick": "${OPENCLAW_MODEL_QUICK}",
+    "cheap": "${OPENCLAW_MODEL_CHEAP}"
+  },
+  "agents": {
+    "defaults": {
+      "sandbox": {
+        "mode": "non-main"
+      },
+      "tools": {
+        "allowlist": ["bash", "read", "write", "edit", "sessions_list"],
+        "denylist":  ["browser", "canvas", "cron", "discord", "gateway"]
+      }
+    }
+  },
+  "channels": {
+    "slack": {
+      "botToken":   "${SLACK_BOT_TOKEN}",
+      "appToken":   "${SLACK_APP_TOKEN}",
+      "socketMode": true,
+      "dmPolicy":   "pairing",
+      "allowFrom":  ${OPENCLAW_ALLOW_FROM_JSON}
+    }
+  },
+  "anthropic": {
+    "apiKey": "${ANTHROPIC_API_KEY}"
+  }
+}
