@@ -116,7 +116,7 @@ ufw --force enable
   --anthropic-api-key sk-ant-api03-xxxx
 ```
 
-### 특정 사용자 사전 허용 (Strategy A)
+### 특정 사용자 사전 허용
 ```bash
 ./provision.sh \
   --slack-bot-token xoxb-... \
@@ -152,6 +152,26 @@ export ANTHROPIC_API_KEY="sk-ant-..."
   --anthropic-api-key sk-ant-... \
   --force
 ```
+
+### 출력 언어 지정
+```bash
+# 영어 출력
+./provision.sh --lang en \
+  --slack-bot-token xoxb-... \
+  --slack-app-token xapp-... \
+  --anthropic-api-key sk-ant-...
+
+# 환경 변수로 지정 (CI/CD 등)
+OPENCLAW_LANG=en ./provision.sh ...
+```
+
+### 종료 코드
+
+| 코드 | 의미 |
+|------|------|
+| `0` | 프로비저닝 및 모든 검증 성공 |
+| `1` | 검증·설정·설치 단계 오류로 중단 |
+| `2` | 설치 완료, 일부 검증 경고 (기본 동작은 가능할 수 있음) |
 
 ---
 
