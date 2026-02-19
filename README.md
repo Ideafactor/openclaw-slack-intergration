@@ -27,6 +27,7 @@ openclaw_slack/
 │   ├── openclaw.json.template        # OpenClaw 설정 JSON 템플릿
 │   └── slack-manifest.yaml.template  # Slack App Manifest 템플릿 (참고용)
 └── scripts/
+    ├── i18n.sh                       # 다국어 지원 (ko/en) — msg() 함수
     ├── validate.sh                   # Phase 1: 입력 검증 + 의존성 체크
     ├── configure.sh                  # Phase 2: 템플릿 렌더링 (envsubst)
     ├── install.sh                    # Phase 3: npm install + openclaw onboard
@@ -52,6 +53,7 @@ openclaw_slack/
 | `--force` | — | 기존 설치 제거 후 재설치 |
 | `--dry-run` | — | 실제 실행 없이 출력만 확인 |
 | `--verbose` / `-v` | — | 상세 로그 출력 |
+| `--lang ko\|en` | — | 출력 언어 설정 (기본값: 시스템 LANG 자동 감지) |
 
 모든 옵션은 동일한 이름의 **환경 변수**로도 설정 가능합니다 (CI/CD secrets 주입 시 활용).
 
@@ -206,6 +208,29 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 - **npm**: 최신 버전
 - **의존성**: `openssl`, `envsubst`, `curl`
 - **선택**: `ufw` (방화벽 설정 시)
+
+---
+
+## Language Support
+
+The tool supports **Korean (ko)** and **English (en)** output.
+
+- **Default**: auto-detected from the system `$LANG` environment variable (`ko_KR*` → Korean, others → English)
+- **Override**: `--lang en` flag or `OPENCLAW_LANG=en` environment variable
+
+```bash
+# 영어로 실행
+./provision.sh --lang en \
+  --slack-bot-token xoxb-... \
+  --slack-app-token xapp-... \
+  --anthropic-api-key sk-ant-...
+
+# 환경 변수로 지정
+OPENCLAW_LANG=ko ./provision.sh ...
+
+# uninstall.sh도 동일하게 지원
+./uninstall.sh --lang en --yes
+```
 
 ---
 

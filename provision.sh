@@ -13,7 +13,8 @@
 #     [--skip-firewall] \
 #     [--skip-verify] \
 #     [--force] \
-#     [--dry-run]
+#     [--dry-run] \
+#     [--lang ko|en]
 #
 # 환경 변수로도 모든 플래그 설정 가능 (CI/CD secrets 주입 시)
 
@@ -49,6 +50,14 @@ log_debug()   { [[ "${VERBOSE:-false}" == "true" ]] && echo -e "        ${NC}$*"
 export -f log_phase log_info log_success log_warn log_error log_debug
 
 # ────────────────────────────────────────────────────────────
+# i18n 로드 (msg 함수 — 모든 한국어/영어 메시지 출력)
+# ────────────────────────────────────────────────────────────
+OPENCLAW_LANG="${OPENCLAW_LANG:-}"
+export OPENCLAW_LANG
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/scripts/i18n.sh"
+
+# ────────────────────────────────────────────────────────────
 # 기본값
 # ────────────────────────────────────────────────────────────
 SLACK_BOT_TOKEN="${SLACK_BOT_TOKEN:-}"
@@ -67,6 +76,7 @@ VERBOSE="${VERBOSE:-false}"
 export SLACK_BOT_TOKEN SLACK_APP_TOKEN ANTHROPIC_API_KEY
 export PRIMARY_MODEL BOT_NAME STATE_DIR
 export SKIP_FIREWALL SKIP_VERIFY FORCE DRY_RUN VERBOSE
+export ALLOW_FROM
 
 # ────────────────────────────────────────────────────────────
 # CLI 인수 파싱
@@ -98,10 +108,12 @@ parse_args() {
         DRY_RUN=true; shift ;;
       --verbose|-v)
         VERBOSE=true; shift ;;
+      --lang)
+        OPENCLAW_LANG="$2"; shift 2 ;;
       --help|-h)
         print_usage; exit 0 ;;
       *)
-        log_error "알 수 없는 옵션: $1"
+        log_error "$(msg PROV_UNKNOWN_OPTION "$1")"
         print_usage
         exit 1 ;;
     esac
@@ -111,44 +123,45 @@ parse_args() {
   export SLACK_BOT_TOKEN SLACK_APP_TOKEN ANTHROPIC_API_KEY
   export PRIMARY_MODEL BOT_NAME STATE_DIR
   export SKIP_FIREWALL SKIP_VERIFY FORCE DRY_RUN VERBOSE
-  export ALLOW_FROM
+  export ALLOW_FROM OPENCLAW_LANG
 }
 
 print_usage() {
   cat <<EOF
 
-${BOLD}사용법:${NC}
-  ./provision.sh [옵션]
+${BOLD}$(msg PROV_USAGE_HEADER)${NC}
+  ./provision.sh [$(msg PROV_USAGE_OPTIONS_LABEL)]
 
-${BOLD}필수 옵션:${NC}
+${BOLD}$(msg PROV_USAGE_REQUIRED)${NC}
   --slack-bot-token   TOKEN    Slack Bot Token (xoxb-...)
   --slack-app-token   TOKEN    Slack App-Level Token (xapp-...)
   --anthropic-api-key KEY      Anthropic API Key (sk-ant-...)
 
-${BOLD}선택 옵션:${NC}
-  --allow-from        USER_ID  허용할 Slack Member ID (여러 번 사용 가능)
-  --primary-model     MODEL    기본 AI 모델 (기본값: anthropic/claude-opus-4-6)
-  --bot-name          NAME     봇 이름 (기본값: OpenClaw)
-  --state-dir         PATH     설정 저장 경로 (기본값: ~/.openclaw)
-  --skip-firewall              UFW 설정 건너뜀
-  --skip-verify                검증 단계 건너뜀
-  --force                      기존 설치 제거 후 재설치
-  --dry-run                    실제 실행 없이 출력만
-  --verbose, -v                상세 로그 출력
-  --help, -h                   도움말 표시
+${BOLD}$(msg PROV_USAGE_OPTIONAL)${NC}
+  --allow-from        USER_ID  $(msg PROV_OPT_ALLOW_FROM_DESC)
+  --primary-model     MODEL    $(msg PROV_OPT_MODEL_DESC)
+  --bot-name          NAME     $(msg PROV_OPT_BOT_NAME_DESC)
+  --state-dir         PATH     $(msg PROV_OPT_STATE_DIR_DESC)
+  --lang              ko|en    $(msg PROV_OPT_LANG_DESC)
+  --skip-firewall              $(msg PROV_OPT_SKIP_FW_DESC)
+  --skip-verify                $(msg PROV_OPT_SKIP_VERIFY_DESC)
+  --force                      $(msg PROV_OPT_FORCE_DESC)
+  --dry-run                    $(msg PROV_OPT_DRY_RUN_DESC)
+  --verbose, -v                $(msg PROV_OPT_VERBOSE_DESC)
+  --help, -h                   $(msg PROV_OPT_HELP_DESC)
 
-${BOLD}환경 변수:${NC}
-  모든 옵션은 동일한 이름의 환경 변수로 대체 가능합니다.
-  예: SLACK_BOT_TOKEN=xoxb-... ./provision.sh
+${BOLD}$(msg PROV_USAGE_ENV)${NC}
+  $(msg PROV_USAGE_ENV_DESC)
+$(msg PROV_USAGE_ENV_EXAMPLE)
 
-${BOLD}예시:${NC}
-  # 기본 설치
+${BOLD}$(msg PROV_USAGE_EXAMPLES)${NC}
+  $(msg PROV_USAGE_BASIC_INSTALL)
   ./provision.sh \\
     --slack-bot-token xoxb-123... \\
     --slack-app-token xapp-1-A123... \\
     --anthropic-api-key sk-ant-...
 
-  # 특정 사용자 허용 + dry-run
+  $(msg PROV_USAGE_ALLOW_USER)
   ./provision.sh \\
     --slack-bot-token xoxb-... \\
     --slack-app-token xapp-... \\
@@ -174,16 +187,16 @@ EOF
   echo -e "${NC}"
 
   if [[ "${DRY_RUN}" == "true" ]]; then
-    echo -e "${YELLOW}  ⚠  DRY-RUN 모드: 실제 변경 없음${NC}\n"
+    echo -e "${YELLOW}$(msg PROV_DRY_RUN_MODE)${NC}\n"
   fi
 
-  echo -e "  봇 이름:      ${BOT_NAME}"
-  echo -e "  기본 모델:    ${PRIMARY_MODEL}"
-  echo -e "  상태 디렉터리: ${STATE_DIR}"
+  echo -e "$(msg PROV_BOT_NAME "${BOT_NAME}")"
+  echo -e "$(msg PROV_PRIMARY_MODEL "${PRIMARY_MODEL}")"
+  echo -e "$(msg PROV_STATE_DIR "${STATE_DIR}")"
   if [[ ${#ALLOW_FROM[@]} -gt 0 ]]; then
-    echo -e "  허용 사용자:  ${ALLOW_FROM[*]}"
+    echo -e "$(msg PROV_ALLOW_USERS "${ALLOW_FROM[*]}")"
   else
-    echo -e "  허용 사용자:  (없음 — 페어링 필요)"
+    echo -e "$(msg PROV_ALLOW_USERS_NONE)"
   fi
   echo ""
 }
@@ -197,7 +210,7 @@ load_scripts() {
   for script in validate configure install firewall verify; do
     local script_path="${scripts_dir}/${script}.sh"
     if [[ ! -f "${script_path}" ]]; then
-      log_error "스크립트 파일을 찾을 수 없습니다: ${script_path}"
+      log_error "$(msg PROV_SCRIPT_NOT_FOUND "${script_path}")"
       exit 1
     fi
     # shellcheck source=/dev/null
@@ -210,27 +223,27 @@ load_scripts() {
 # ────────────────────────────────────────────────────────────
 print_success_summary() {
   echo ""
-  echo -e "${BOLD}${GREEN}╔═══════════════════════════════════════════════╗${NC}"
-  echo -e "${BOLD}${GREEN}║     OpenClaw 프로비저닝 완료!                 ║${NC}"
-  echo -e "${BOLD}${GREEN}╚═══════════════════════════════════════════════╝${NC}"
+  echo -e "${BOLD}${GREEN}══════════════════════════════════════════════════${NC}"
+  echo -e "${BOLD}${GREEN}$(msg PROV_SUCCESS_BANNER)${NC}"
+  echo -e "${BOLD}${GREEN}══════════════════════════════════════════════════${NC}"
   echo ""
-  echo -e "  ${GREEN}✓${NC} OpenClaw이 Slack과 소켓 모드로 연결되었습니다."
-  echo -e "  ${GREEN}✓${NC} 게이트웨이: http://127.0.0.1:18789 (로컬 전용)"
-  echo -e "  ${GREEN}✓${NC} 설정 파일: ${STATE_DIR}/openclaw.json"
+  echo -e "  ${GREEN}✓${NC} $(msg PROV_SUCCESS_CONNECTED)"
+  echo -e "  ${GREEN}✓${NC} $(msg PROV_SUCCESS_GATEWAY)"
+  echo -e "  ${GREEN}✓${NC} $(msg PROV_SUCCESS_CONFIG "${STATE_DIR}")"
   echo ""
-  echo -e "  ${BOLD}다음 단계:${NC}"
-  echo -e "  1. Slack에서 @${BOT_NAME}에게 DM을 보내 테스트하세요."
+  echo -e "$(msg PROV_NEXT_STEPS)"
+  echo -e "$(msg PROV_NEXT_DM "${BOT_NAME}")"
   if [[ ${#ALLOW_FROM[@]} -eq 0 ]]; then
-    echo -e "  2. 첫 사용자는 페어링 코드로 인증이 필요합니다."
+    echo -e "$(msg PROV_NEXT_PAIRING)"
   else
-    echo -e "  2. 허용된 사용자(${ALLOW_FROM[*]})는 바로 사용 가능합니다."
+    echo -e "$(msg PROV_NEXT_ALLOWED "${ALLOW_FROM[*]}")"
   fi
-  echo -e "  3. 완전 제거: ./uninstall.sh"
+  echo -e "$(msg PROV_NEXT_UNINSTALL)"
   echo ""
-  echo -e "  ${BOLD}유용한 명령어:${NC}"
-  echo -e "  • 상태 확인:  curl http://127.0.0.1:18789/api/status"
-  echo -e "  • 로그 확인:  journalctl -u openclaw -f  (Linux)"
-  echo -e "              cat ${HOME}/Library/Logs/openclaw/  (macOS)"
+  echo -e "$(msg PROV_USEFUL_CMDS)"
+  echo -e "$(msg PROV_CMD_STATUS)"
+  echo -e "$(msg PROV_CMD_LOG_LINUX)"
+  echo -e "$(msg PROV_CMD_LOG_MACOS "${HOME}")"
   echo ""
 }
 
@@ -245,21 +258,21 @@ main() {
   # Phase 1: 검증
   if ! run_validate; then
     echo ""
-    log_error "프로비저닝 중단: 검증 실패"
+    log_error "$(msg PROV_ABORT_VALIDATE)"
     exit 1
   fi
 
   # Phase 2: 설정
   if ! run_configure; then
     echo ""
-    log_error "프로비저닝 중단: 설정 파일 렌더링 실패"
+    log_error "$(msg PROV_ABORT_CONFIGURE)"
     exit 1
   fi
 
   # Phase 3: 설치
   if ! run_install; then
     echo ""
-    log_error "프로비저닝 중단: 설치 실패"
+    log_error "$(msg PROV_ABORT_INSTALL)"
     exit 1
   fi
 
@@ -269,8 +282,8 @@ main() {
   # Phase 5: 검증
   if ! run_verify; then
     echo ""
-    log_warn "프로비저닝 완료되었으나 일부 검증 실패"
-    log_info "로그를 확인하고 수동으로 상태를 점검하세요."
+    log_warn "$(msg PROV_WARN_VERIFY)"
+    log_info "$(msg PROV_INFO_CHECK_LOGS)"
     exit 2
   fi
 

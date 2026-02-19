@@ -4,23 +4,23 @@
 
 # Layer 1: 프로세스 체크
 check_process() {
-  log_info "  [1/4] 프로세스 체크..."
+  log_info "$(msg VFY_PROCESS_CHECK)"
 
   if pgrep -f openclaw &>/dev/null; then
     local pids
     pids=$(pgrep -f openclaw | tr '\n' ' ')
-    log_success "  [1/4] openclaw 프로세스 실행 중 (PID: ${pids})"
+    log_success "$(msg VFY_PROCESS_OK "${pids}")"
     return 0
   else
-    log_error "  [1/4] openclaw 프로세스를 찾을 수 없습니다."
-    log_info  "        수동 확인: pgrep -f openclaw"
+    log_error "$(msg VFY_PROCESS_NOT_FOUND)"
+    log_info  "$(msg VFY_PROCESS_MANUAL)"
     return 1
   fi
 }
 
 # Layer 2: 게이트웨이 HTTP 응답 체크 (30초 폴링)
 check_gateway() {
-  log_info "  [2/4] 게이트웨이 HTTP 응답 체크 (최대 30초)..."
+  log_info "$(msg VFY_GATEWAY_CHECK)"
   local url="http://127.0.0.1:18789/api/status"
   local max_attempts=30
   local attempt=0
@@ -32,33 +32,33 @@ check_gateway() {
     local exit_code=$?
 
     if [[ "${exit_code}" -eq 0 ]]; then
-      log_success "  [2/4] 게이트웨이 응답 확인 (시도 ${attempt}/${max_attempts})"
-      log_debug   "        응답: ${response}"
+      log_success "$(msg VFY_GATEWAY_OK "${attempt}" "${max_attempts}")"
+      log_debug   "$(msg VFY_GATEWAY_RESPONSE "${response}")"
       return 0
     fi
 
     if [[ "${attempt}" -lt "${max_attempts}" ]]; then
-      log_debug "  [2/4] 대기 중... (${attempt}/${max_attempts})"
+      log_debug "$(msg VFY_GATEWAY_WAITING "${attempt}" "${max_attempts}")"
       sleep 1
     fi
   done
 
-  log_error "  [2/4] 게이트웨이가 30초 내에 응답하지 않았습니다."
-  log_info  "        URL: ${url}"
-  log_info  "        수동 확인: curl ${url}"
+  log_error "$(msg VFY_GATEWAY_TIMEOUT)"
+  log_info  "$(msg VFY_GATEWAY_URL "${url}")"
+  log_info  "$(msg VFY_GATEWAY_MANUAL "${url}")"
   return 1
 }
 
 # Layer 3: Slack 연결 확인 (로그 패턴 검색)
 check_slack_connection() {
-  log_info "  [3/4] Slack 소켓 모드 연결 확인..."
+  log_info "$(msg VFY_SLACK_CHECK)"
   local pattern="socket.mode.connected\|socket mode connected\|Socket Mode connected\|WebSocket.*connected"
   local found=false
 
   # systemd 로그 확인 (Linux)
   if command -v journalctl &>/dev/null; then
     if journalctl -u openclaw --since "5 minutes ago" --no-pager 2>/dev/null | grep -qiE "${pattern}"; then
-      log_success "  [3/4] Slack 소켓 모드 연결 확인 (systemd 로그)"
+      log_success "$(msg VFY_SLACK_OK_SYSTEMD)"
       found=true
     fi
   fi
@@ -68,7 +68,7 @@ check_slack_connection() {
     local log_dir="${HOME}/Library/Logs/openclaw"
     if [[ -d "${log_dir}" ]]; then
       if find "${log_dir}" -name "*.log" -newer "${STATE_DIR}/.env" -exec grep -lqiE "${pattern}" {} \; 2>/dev/null; then
-        log_success "  [3/4] Slack 소켓 모드 연결 확인 (launchd 로그)"
+        log_success "$(msg VFY_SLACK_OK_LAUNCHD)"
         found=true
       fi
     fi
@@ -84,7 +84,7 @@ check_slack_connection() {
     )
     for log_file in "${log_files[@]}"; do
       if [[ -f "${log_file}" ]] && grep -qiE "${pattern}" "${log_file}" 2>/dev/null; then
-        log_success "  [3/4] Slack 소켓 모드 연결 확인 (${log_file})"
+        log_success "$(msg VFY_SLACK_OK_FILE "${log_file}")"
         found=true
         break
       fi
@@ -92,9 +92,9 @@ check_slack_connection() {
   fi
 
   if [[ "${found}" == "false" ]]; then
-    log_warn "  [3/4] Slack 소켓 모드 연결 로그를 확인하지 못했습니다."
-    log_info  "        연결이 완료되기까지 시간이 필요할 수 있습니다."
-    log_info  "        수동 확인: journalctl -u openclaw -f"
+    log_warn "$(msg VFY_SLACK_NOT_FOUND)"
+    log_info  "$(msg VFY_SLACK_WAIT)"
+    log_info  "$(msg VFY_SLACK_MANUAL)"
     return 1
   fi
 
@@ -103,7 +103,7 @@ check_slack_connection() {
 
 # Layer 4: 포트 격리 보안 확인
 check_port_isolation() {
-  log_info "  [4/4] 포트 격리 보안 확인..."
+  log_info "$(msg VFY_PORT_CHECK)"
   local port=18789
   local issues=0
 
@@ -114,9 +114,9 @@ check_port_isolation() {
     bindings=$(ss -tlnp "sport = :${port}" 2>/dev/null)
 
     if echo "${bindings}" | grep -v "127.0.0.1:${port}" | grep -q ":${port}"; then
-      log_error "  [4/4] 포트 ${port}가 외부 인터페이스에 바인드되어 있습니다!"
-      log_error "        보안 위험: 외부에서 게이트웨이에 직접 접근 가능"
-      log_info  "        바인딩 현황:"
+      log_error "$(msg VFY_PORT_EXPOSED "${port}")"
+      log_error "$(msg VFY_PORT_EXPOSED_RISK)"
+      log_info  "$(msg VFY_PORT_BINDINGS)"
       echo "${bindings}" | while IFS= read -r line; do log_info "          ${line}"; done
       ((issues++))
     fi
@@ -126,18 +126,18 @@ check_port_isolation() {
     bindings=$(lsof -iTCP:"${port}" -sTCP:LISTEN 2>/dev/null)
 
     if echo "${bindings}" | grep -v "127.0.0.1:${port}\|localhost:${port}" | grep -q ":${port}"; then
-      log_error "  [4/4] 포트 ${port}가 외부 인터페이스에 바인드되어 있습니다!"
+      log_error "$(msg VFY_PORT_EXPOSED "${port}")"
       ((issues++))
     fi
   else
-    log_warn "  [4/4] ss/lsof를 찾을 수 없어 포트 격리를 확인할 수 없습니다."
+    log_warn "$(msg VFY_PORT_NO_TOOL)"
     return 0
   fi
 
   # UFW 규칙 확인 (설정된 경우)
   if command -v ufw &>/dev/null && [[ "${SKIP_FIREWALL:-false}" != "true" ]]; then
     if ! sudo ufw status 2>/dev/null | grep -q "DENY.*${port}"; then
-      log_warn "  [4/4] UFW에서 포트 ${port} 차단 규칙을 확인할 수 없습니다."
+      log_warn "$(msg VFY_UFW_RULE_NOT_FOUND "${port}")"
     fi
   fi
 
@@ -145,20 +145,20 @@ check_port_isolation() {
     return 1
   fi
 
-  log_success "  [4/4] 포트 격리 확인 완료 (127.0.0.1 전용 바인딩)"
+  log_success "$(msg VFY_PORT_OK)"
   return 0
 }
 
 run_verify() {
-  log_phase "Phase 5: 설치 검증"
+  log_phase "$(msg PHASE_VERIFY)"
 
   if [[ "${SKIP_VERIFY:-false}" == "true" ]]; then
-    log_info "검증 단계 건너뜀 (--skip-verify)"
+    log_info "$(msg VFY_SKIP)"
     return 0
   fi
 
   if [[ "${DRY_RUN:-false}" == "true" ]]; then
-    log_info "[DRY-RUN] 검증 단계 건너뜀"
+    log_info "$(msg VFY_DRY_SKIP)"
     return 0
   fi
 
@@ -171,15 +171,15 @@ run_verify() {
 
   echo ""
   if [[ "${total_errors}" -eq 0 ]]; then
-    log_success "Phase 5 완료: 모든 검증 통과 (4/4)"
+    log_success "$(msg VFY_DONE)"
     return 0
   elif [[ "${total_errors}" -le 1 ]]; then
-    log_warn "Phase 5 완료: 일부 검증 경고 (${total_errors}/4 실패)"
-    log_info "경고가 있지만 기본 기능은 동작할 수 있습니다."
+    log_warn "$(msg VFY_WARN "${total_errors}")"
+    log_info "$(msg VFY_WARN_INFO)"
     return 0
   else
-    log_error "Phase 5 실패: ${total_errors}/4 검증 실패"
-    log_info  "설치에 문제가 있습니다. 로그를 확인하세요."
+    log_error "$(msg VFY_FAIL "${total_errors}")"
+    log_info  "$(msg VFY_FAIL_INFO)"
     return 1
   fi
 }

@@ -37,12 +37,12 @@ render_templates() {
 
   # 게이트웨이 토큰 자동 생성
   OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 32)
-  log_debug "게이트웨이 토큰 생성 완료"
+  log_debug "$(msg CFG_GATEWAY_TOKEN_CREATED)"
 
   # allowFrom JSON 배열 생성
   export OPENCLAW_ALLOW_FROM_JSON
   OPENCLAW_ALLOW_FROM_JSON=$(build_allow_from_json)
-  log_debug "allowFrom JSON: ${OPENCLAW_ALLOW_FROM_JSON}"
+  log_debug "$(msg CFG_ALLOW_FROM_JSON "${OPENCLAW_ALLOW_FROM_JSON}")"
 
   # 환경 변수 export (envsubst용)
   export SLACK_BOT_TOKEN
@@ -56,55 +56,55 @@ render_templates() {
   export OPENCLAW_MODEL_CHEAP="gpt-3.5-turbo"
   export OPENCLAW_STATE_DIR="${state_dir}"
 
-  log_info "템플릿 렌더링 중..."
+  log_info "$(msg CFG_RENDERING)"
 
   # 1. .env 파일 렌더링
   if [[ "${DRY_RUN:-false}" == "true" ]]; then
-    log_info "[DRY-RUN] .env 파일 생성 예정: ${state_dir}/.env"
-    log_info "[DRY-RUN] openclaw.json 파일 생성 예정: ${state_dir}/openclaw.json"
-    log_info "[DRY-RUN] slack-manifest.yaml 파일 생성 예정: ${state_dir}/slack-manifest.yaml"
-    log_info "[DRY-RUN] OPENCLAW_ALLOW_FROM_JSON=${OPENCLAW_ALLOW_FROM_JSON}"
+    log_info "$(msg CFG_DRY_ENV "${state_dir}/.env")"
+    log_info "$(msg CFG_DRY_JSON "${state_dir}/openclaw.json")"
+    log_info "$(msg CFG_DRY_MANIFEST "${state_dir}/slack-manifest.yaml")"
+    log_info "$(msg CFG_DRY_ALLOW_FROM "${OPENCLAW_ALLOW_FROM_JSON}")"
     return 0
   fi
 
   envsubst < "${template_dir}/env.template" > "${state_dir}/.env"
   chmod 600 "${state_dir}/.env"
-  log_debug ".env 파일 생성: ${state_dir}/.env (chmod 600)"
+  log_debug "$(msg CFG_ENV_CREATED "${state_dir}/.env")"
 
   # 2. openclaw.json 렌더링
   envsubst < "${template_dir}/openclaw.json.template" > "${state_dir}/openclaw.json"
   chmod 600 "${state_dir}/openclaw.json"
-  log_debug "openclaw.json 생성: ${state_dir}/openclaw.json (chmod 600)"
+  log_debug "$(msg CFG_JSON_CREATED "${state_dir}/openclaw.json")"
 
   # 3. JSON 유효성 검증
   if ! node -e "JSON.parse(require('fs').readFileSync('${state_dir}/openclaw.json', 'utf8'))" 2>/dev/null; then
-    log_error "생성된 openclaw.json이 유효하지 않습니다."
-    log_info  "파일 내용:"
+    log_error "$(msg CFG_JSON_INVALID)"
+    log_info  "$(msg CFG_FILE_CONTENT)"
     cat "${state_dir}/openclaw.json" >&2
     return 1
   fi
-  log_debug "openclaw.json JSON 유효성 검증 통과"
+  log_debug "$(msg CFG_JSON_VALID)"
 
   # 4. slack-manifest.yaml 렌더링 (참고용)
   envsubst < "${template_dir}/slack-manifest.yaml.template" > "${state_dir}/slack-manifest.yaml"
   chmod 644 "${state_dir}/slack-manifest.yaml"
-  log_debug "slack-manifest.yaml 생성: ${state_dir}/slack-manifest.yaml"
+  log_debug "$(msg CFG_MANIFEST_CREATED "${state_dir}/slack-manifest.yaml")"
 
   return 0
 }
 
 run_configure() {
-  log_phase "Phase 2: 설정 파일 렌더링"
+  log_phase "$(msg PHASE_CONFIGURE)"
 
   if ! render_templates; then
-    log_error "설정 파일 렌더링 실패"
+    log_error "$(msg CFG_RENDER_FAIL)"
     return 1
   fi
 
   if [[ "${DRY_RUN:-false}" != "true" ]]; then
-    log_success "Phase 2 완료: 설정 파일 생성됨 → ${STATE_DIR}"
+    log_success "$(msg CFG_DONE "${STATE_DIR}")"
   else
-    log_success "Phase 2 완료 (dry-run)"
+    log_success "$(msg CFG_DONE_DRY)"
   fi
   return 0
 }

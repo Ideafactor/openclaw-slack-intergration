@@ -3,38 +3,38 @@
 # provision.sh에서 source로 실행됩니다.
 
 install_openclaw_package() {
-  log_info "openclaw 패키지 설치 중..."
+  log_info "$(msg INST_INSTALLING)"
 
   if [[ "${DRY_RUN:-false}" == "true" ]]; then
-    log_info "[DRY-RUN] npm install -g openclaw@latest"
+    log_info "$(msg INST_DRY_NPM)"
     return 0
   fi
 
   if ! npm install -g openclaw@latest 2>&1 | while IFS= read -r line; do log_debug "npm: ${line}"; done; then
-    log_error "npm install -g openclaw@latest 실패"
+    log_error "$(msg INST_NPM_FAIL)"
     return 1
   fi
 
   # 설치 확인
   if ! command -v openclaw &>/dev/null; then
-    log_error "openclaw 명령어를 찾을 수 없습니다. npm global bin 경로를 확인하세요."
-    log_info  "npm bin 경로: $(npm bin -g 2>/dev/null || echo 'unknown')"
-    log_info  "PATH: ${PATH}"
+    log_error "$(msg INST_CMD_NOT_FOUND)"
+    log_info  "$(msg INST_NPM_BIN "$(npm bin -g 2>/dev/null || echo 'unknown')")"
+    log_info  "$(msg INST_PATH "${PATH}")"
     return 1
   fi
 
   local version
   version=$(openclaw --version 2>/dev/null || echo "unknown")
-  log_success "openclaw 설치 완료 (버전: ${version})"
+  log_success "$(msg INST_DONE "${version}")"
   return 0
 }
 
 run_openclaw_onboard() {
-  log_info "openclaw onboard 실행 중..."
+  log_info "$(msg INST_ONBOARD_START)"
 
   if [[ "${DRY_RUN:-false}" == "true" ]]; then
-    log_info "[DRY-RUN] OPENCLAW_CONFIG_PATH=${STATE_DIR}/openclaw.json"
-    log_info "[DRY-RUN] timeout 120 openclaw onboard --non-interactive --skip-health --gateway-bind lan --install-daemon"
+    log_info "$(msg INST_DRY_CONFIG "${STATE_DIR}")"
+    log_info "$(msg INST_DRY_ONBOARD)"
     return 0
   fi
 
@@ -47,11 +47,11 @@ run_openclaw_onboard() {
     # shellcheck source=/dev/null
     source "${STATE_DIR}/.env"
     set +a
-    log_debug ".env 파일 로드 완료"
+    log_debug "$(msg INST_ENV_LOADED)"
   fi
 
-  log_info "onboard 시작 (최대 120초 대기)..."
-  log_info "알려진 WebSocket 헬스체크 hang 버그(GitHub #7976) 우회를 위해 --skip-health 사용"
+  log_info "$(msg INST_ONBOARD_WAIT)"
+  log_info "$(msg INST_ONBOARD_SKIP_HEALTH)"
 
   # timeout으로 무한 대기 방지
   # --non-interactive: 새 프롬프트 추가 시 CI 무한 대기 방지
@@ -69,24 +69,24 @@ run_openclaw_onboard() {
     done || onboard_exit=$?
 
   if [[ "${onboard_exit}" -eq 124 ]]; then
-    log_error "openclaw onboard가 120초 내에 완료되지 않았습니다 (타임아웃)"
-    log_info  "로그 확인: journalctl -u openclaw 또는 ${STATE_DIR}/openclaw.log"
+    log_error "$(msg INST_ONBOARD_TIMEOUT)"
+    log_info  "$(msg INST_LOG_HINT "${STATE_DIR}")"
     return 1
   elif [[ "${onboard_exit}" -ne 0 ]]; then
-    log_error "openclaw onboard 실패 (종료 코드: ${onboard_exit})"
-    log_info  "로그 확인: journalctl -u openclaw 또는 ${STATE_DIR}/openclaw.log"
+    log_error "$(msg INST_ONBOARD_FAIL "${onboard_exit}")"
+    log_info  "$(msg INST_LOG_HINT "${STATE_DIR}")"
     return 1
   fi
 
-  log_success "openclaw onboard 완료"
+  log_success "$(msg INST_ONBOARD_DONE)"
   return 0
 }
 
 run_install() {
-  log_phase "Phase 3: OpenClaw 설치"
+  log_phase "$(msg PHASE_INSTALL)"
 
   if [[ "${FORCE:-false}" == "true" ]]; then
-    log_info "기존 설치 제거 중 (--force)..."
+    log_info "$(msg INST_FORCE_REMOVE)"
     if command -v openclaw &>/dev/null; then
       openclaw gateway stop --non-interactive 2>/dev/null || true
       openclaw uninstall --all --yes --non-interactive 2>/dev/null || true
@@ -103,6 +103,6 @@ run_install() {
     return 1
   fi
 
-  log_success "Phase 3 완료: OpenClaw 설치 및 초기화 완료"
+  log_success "$(msg INST_DONE_PHASE)"
   return 0
 }

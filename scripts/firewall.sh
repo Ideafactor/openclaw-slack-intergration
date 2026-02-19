@@ -6,13 +6,13 @@ apply_firewall_rules() {
   local port=18789
 
   if [[ "${SKIP_FIREWALL:-false}" == "true" ]]; then
-    log_info "방화벽 설정 건너뜀 (--skip-firewall)"
+    log_info "$(msg FW_SKIP)"
     return 0
   fi
 
   if ! command -v ufw &>/dev/null; then
-    log_warn "ufw를 찾을 수 없습니다. 방화벽 설정을 건너뜁니다."
-    log_warn "포트 ${port}를 수동으로 차단하세요 (iptables 또는 보안 그룹 설정)."
+    log_warn "$(msg FW_UFW_NOT_FOUND)"
+    log_warn "$(msg FW_MANUAL_BLOCK "${port}")"
     return 0
   fi
 
@@ -24,27 +24,27 @@ apply_firewall_rules() {
 
   # root 권한 확인
   if [[ "${EUID}" -ne 0 ]] && ! sudo -n true 2>/dev/null; then
-    log_warn "ufw 설정에 root 권한이 필요합니다. sudo를 사용합니다."
+    log_warn "$(msg FW_SUDO_NEEDED)"
   fi
 
-  log_info "포트 ${port} 외부 접근 차단 중..."
+  log_info "$(msg FW_BLOCKING "${port}")"
 
   # 외부에서 포트 18789로의 TCP 접근 차단
   if ! sudo ufw deny in on any to any port "${port}" proto tcp 2>&1 | while IFS= read -r line; do log_debug "ufw: ${line}"; done; then
-    log_warn "ufw 규칙 추가 실패. 수동으로 포트 ${port}를 차단하세요."
+    log_warn "$(msg FW_RULE_FAIL "${port}")"
     return 0  # 방화벽 실패는 치명적이지 않음 (게이트웨이 바인딩으로 보호됨)
   fi
 
   # UFW 활성화 (이미 활성화된 경우 --force로 재확인 없이 진행)
   if ! sudo ufw --force enable 2>&1 | while IFS= read -r line; do log_debug "ufw: ${line}"; done; then
-    log_warn "ufw 활성화 실패."
+    log_warn "$(msg FW_ENABLE_FAIL)"
     return 0
   fi
 
-  log_success "UFW 규칙 적용 완료: 외부에서 포트 ${port} 차단"
+  log_success "$(msg FW_DONE "${port}")"
 
   # 현재 UFW 상태 출력
-  log_debug "UFW 상태:"
+  log_debug "$(msg FW_STATUS)"
   sudo ufw status numbered 2>/dev/null | grep "${port}" | while IFS= read -r line; do
     log_debug "  ${line}"
   done
@@ -53,13 +53,13 @@ apply_firewall_rules() {
 }
 
 run_firewall() {
-  log_phase "Phase 4: 방화벽 설정"
+  log_phase "$(msg PHASE_FIREWALL)"
 
   if ! apply_firewall_rules; then
-    log_warn "방화벽 설정에 문제가 있었습니다. 계속 진행합니다."
-    log_warn "게이트웨이는 127.0.0.1로만 바인딩되어 있어 기본 보안은 유지됩니다."
+    log_warn "$(msg FW_PROBLEM)"
+    log_warn "$(msg FW_GATEWAY_SECURE)"
   else
-    log_success "Phase 4 완료: 방화벽 설정 완료"
+    log_success "$(msg FW_DONE_PHASE)"
   fi
 
   return 0  # 방화벽 실패는 치명적이지 않음
