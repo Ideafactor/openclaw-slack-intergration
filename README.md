@@ -211,12 +211,12 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 ---
 
-## Language Support
+## 다국어 지원 (i18n)
 
-The tool supports **Korean (ko)** and **English (en)** output.
+**한국어(ko)** 와 **영어(en)** 출력을 모두 지원합니다.
 
-- **Default**: auto-detected from the system `$LANG` environment variable (`ko_KR*` → Korean, others → English)
-- **Override**: `--lang en` flag or `OPENCLAW_LANG=en` environment variable
+- **기본값**: 시스템 `$LANG` 환경 변수에서 자동 감지 (`ko_KR*` → 한국어, 그 외 → 영어)
+- **강제 지정**: `--lang en` 플래그 또는 `OPENCLAW_LANG=en` 환경 변수
 
 ```bash
 # 영어로 실행
@@ -225,7 +225,7 @@ The tool supports **Korean (ko)** and **English (en)** output.
   --slack-app-token xapp-... \
   --anthropic-api-key sk-ant-...
 
-# 환경 변수로 지정
+# 한국어로 실행 (환경 변수 방식)
 OPENCLAW_LANG=ko ./provision.sh ...
 
 # uninstall.sh도 동일하게 지원
