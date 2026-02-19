@@ -211,6 +211,5 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 ## 참고 문서
 
-- `openclaw_slack.md` — 전체 시스템 PRD (상세 아키텍처 및 보안 모델)
 - [OpenClaw GitHub](https://github.com/openclaw/openclaw)
 - [Slack App Manifest 문서](https://docs.slack.dev/app-manifests/)
